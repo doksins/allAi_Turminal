@@ -1,14 +1,12 @@
 import { createServer } from 'node:http'
-import { access } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { execFileSync } from 'node:child_process'
 import { WebSocketServer } from 'ws'
 import pty from 'node-pty'
-
 const port = Number(process.env.PORT || 5173)
 const root = process.cwd()
-
 const readGitHubStatus = () => {
   try {
     const remote = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: root, encoding: 'utf8' }).trim()
@@ -22,11 +20,9 @@ const readGitHubStatus = () => {
     return { configured: false, repository: '', message: '원격 저장소가 연결되어 있지 않습니다.' }
   }
 }
-
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`)
   const pathname = url.pathname
-
   if (pathname.endsWith('/api/status')) {
     const github = readGitHubStatus()
     let bashAvailable = true
@@ -35,13 +31,11 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify({ github, bashAvailable }))
     return
   }
-
   if (/\.(?:js|css|map|ico|png|svg)$/i.test(pathname)) {
     response.writeHead(204, { 'Cache-Control': 'no-store' })
     response.end()
     return
   }
-
   try {
     const page = await readFile(path.join(root, 'terminal-preview.html'))
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
@@ -51,7 +45,6 @@ const server = createServer(async (request, response) => {
     response.end('화면을 준비하지 못했습니다.')
   }
 })
-
 const sockets = new WebSocketServer({ noServer: true })
 server.on('upgrade', (request, socket, head) => {
   const pathname = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`).pathname
@@ -61,7 +54,6 @@ server.on('upgrade', (request, socket, head) => {
   }
   sockets.handleUpgrade(request, socket, head, (client) => sockets.emit('connection', client))
 })
-
 sockets.on('connection', (client) => {
   let shell
   try {
@@ -77,7 +69,6 @@ sockets.on('connection', (client) => {
     client.close()
     return
   }
-
   shell.onData((data) => {
     if (client.readyState === client.OPEN) client.send(data)
   })
@@ -93,5 +84,4 @@ sockets.on('connection', (client) => {
   })
   client.on('close', () => shell.kill())
 })
-
 server.listen(port, '0.0.0.0', () => console.log(`Terminal preview ready on port ${port}`))
