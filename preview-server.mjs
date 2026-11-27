@@ -15,6 +15,8 @@ const bind = process.env.TERMINAL_BIND || '0.0.0.0'
 const token = process.env.TERMINAL_TOKEN || randomBytes(32).toString('hex')
 if (!/^[A-Za-z0-9_-]{24,128}$/.test(token)) throw new Error('TERMINAL_TOKEN must be 24–128 URL-safe characters.')
 const secret = Buffer.from(token)
+const instance = randomBytes(8).toString('hex')
+const authVersion = 2
 const sessions = new Map()
 const IDLE = 30 * 60_000
 const LIMIT = 4
@@ -47,8 +49,11 @@ async function body(request) {
     if (length > 256 * 1024) throw failure(413, 'Request too large')
     chunks.push(part)
   }
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') }
-  catch { throw failure(400, 'Invalid JSON') }
+  try {
+    const value = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object expected')
+    return value
+  } catch { throw failure(400, 'Invalid JSON') }
 }
 function dimensions(value) {
   return { cols: Math.min(500, Math.max(20, Math.floor(Number(value.cols) || 100))),
@@ -142,40 +147,59 @@ const server = createServer(async (request, response) => {
       response.end(data)
       return
     }
-    const api = route.match(/\/api\/(status|session|output|input|resize|close)$/)
+    const api = route.match(/\/api\/(health|status|session|output|input|resize|close)$/)
     if (api) {
-      if (!authorized(request.headers['x-terminal-token'])) return json(response,401,{error:'Invalid terminal token'})
-      if (api[1] === 'status' && request.method === 'GET') {
-        let bashAvailable = true, repository = ''
-        try { await access('/bin/bash', 1) } catch { bashAvailable = false }
-        try {
-          const {stdout} = await run('git', ['remote','get-url','origin'], {cwd, timeout:3000})
-          repository = stdout.trim().match(/github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?$/)?.[1] || ''
-        } catch {}
-        return json(response,200,{bashAvailable,github:{configured:!!repository,repository},nativePty:!!nativePty})
+      const action = api[1]
+      if (action === 'health' && request.method === 'GET') {
+        return json(response,200,{instance,authVersion,tokenMode:process.env.TERMINAL_TOKEN?'configured':'generated'})
       }
-      if (api[1] === 'session' && request.method === 'POST') {
-        const size = dimensions(await body(request))
+      if (request.method !== 'POST') {
+        return json(response,405,{error:'JSON POST required; reload the terminal page after updating the server',instance,authVersion})
+      }
+      if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] || '')) {
+        return json(response,415,{error:'JSON Content-Type missing; check preview proxy',instance,authVersion})
+      }
+      const value = await body(request)
+      if (action === 'status' || action === 'session') {
+        if (typeof value.token !== 'string' || !value.token) {
+          console.warn('Terminal authentication rejected: missing JSON token; instance=' + instance)
+          return json(response,401,{error:'Terminal token missing from JSON request',instance,authVersion})
+        }
+        if (!authorized(value.token)) {
+          console.warn('Terminal authentication rejected: token mismatch; instance=' + instance)
+          return json(response,401,{error:'Terminal token mismatch; use the latest server startup token',instance,authVersion})
+        }
+        if (action === 'status') {
+          let bashAvailable = true, repository = ''
+          try { await access('/bin/bash', 1) } catch { bashAvailable = false }
+          try {
+            const {stdout} = await run('git', ['remote','get-url','origin'], {cwd, timeout:3000})
+            repository = stdout.trim().match(/github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?$/)?.[1] || ''
+          } catch {}
+          return json(response,200,{instance,authVersion,bashAvailable,github:{configured:!!repository,repository},nativePty:!!nativePty})
+        }
+        const size = dimensions(value)
         try { await access('/bin/bash', 1) } catch { throw failure(503,'Bash not found; install bash') }
         const session = createSession(size)
-        return json(response,201,{id:session.id,engine:session.engine})
+        return json(response,201,{id:session.id,engine:session.engine,instance,authVersion})
       }
-      const id = request.headers['x-terminal-session']
-      const session = sessions.get(id)
-      if (!session) throw failure(404,'Terminal session expired or not found')
+      // The cryptographically random session ID is a bearer credential. Never put it in a URL or logs.
+      if (value.instance !== instance) {
+        return json(response,409,{error:'Server instance changed; reconnect with the current token',instance,authVersion})
+      }
+      const session = typeof value.session === 'string' ? sessions.get(value.session) : undefined
+      if (!session) return json(response,404,{error:'Terminal session expired or not found',instance,authVersion})
       session.touched = Date.now()
-      if (api[1] === 'output' && request.method === 'GET') {
-        const after = Math.max(0, Number(url.searchParams.get('after')) || 0)
+      if (action === 'output') {
+        const after = Math.max(0, Number(value.after) || 0)
         return json(response,200,snapshot(session,after))
       }
-      if (request.method !== 'POST') throw failure(405,'Method not allowed')
-      if (api[1] === 'close') { destroy(session); return json(response,200,{ok:true}) }
+      if (action === 'close') { destroy(session); return json(response,200,{ok:true}) }
       if (session.closed) throw failure(410,'Shell exited')
-      const value = await body(request)
-      if (api[1] === 'input') {
+      if (action === 'input') {
         if (typeof value.data !== 'string' || value.data.length > 65536) throw failure(400,'Invalid input')
         session.pty.write(value.data)
-      } else if (api[1] === 'resize') {
+      } else if (action === 'resize') {
         const size = dimensions(value)
         session.pty.resize(size.cols,size.rows)
       } else throw failure(404,'Unknown route')
@@ -188,7 +212,7 @@ const server = createServer(async (request, response) => {
       'Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; font-src 'self' data:; object-src 'none'; base-uri 'self'"})
     response.end(page)
   } catch (error) {
-    if (!response.headersSent) json(response,error.status || 500,{error:error.status ? error.message : 'Server error; check server logs'})
+    if (!response.headersSent) json(response,error.status || 500,{error:error.status ? error.message : 'Server error; check server logs',instance,authVersion})
     else response.end()
     if (!error.status) console.error(error)
   }
@@ -197,16 +221,16 @@ const sockets = new WebSocketServer({noServer:true,maxPayload:1024,handleProtoco
 server.on('upgrade', (request, socket, head) => {
   const pathname = new URL(request.url || '/', 'http://localhost').pathname
   const protocols = String(request.headers['sec-websocket-protocol'] || '').split(',').map(s => s.trim())
-  const credential = protocols.find(s => s.startsWith('auth.'))?.slice(5)
   const id = protocols.find(s => s.startsWith('session.'))?.slice(8)
   const session = sessions.get(id)
-  if (!pathname.endsWith('/terminal') || !protocols.includes('terminal-v1') || !authorized(credential) || !session) {
+  if (!pathname.endsWith('/terminal') || !protocols.includes('terminal-v1') || !session) {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
     return
   }
   const cursor = Math.max(0, Number(protocols.find(s => s.startsWith('after.'))?.slice(6)) || 0)
   sockets.handleUpgrade(request,socket,head,client => {
     client.cursor = cursor
+    session.touched = Date.now()
     session.clients.add(client)
     client.on('close', () => session.clients.delete(client))
     client.on('error', () => session.clients.delete(client))
@@ -215,6 +239,7 @@ server.on('upgrade', (request, socket, head) => {
 })
 server.listen(port,bind,() => {
   console.log('Terminal preview ready on ' + bind + ':' + port)
+  console.log('Terminal server instance: ' + instance + ' (JSON auth v' + authVersion + ')')
   if (!process.env.TERMINAL_TOKEN) console.log('Terminal login token (keep private): ' + token)
   else console.log('Terminal login requires configured TERMINAL_TOKEN.')
   console.log('Use HTTPS/authenticated preview or private port forwarding; never expose raw HTTP publicly.')
