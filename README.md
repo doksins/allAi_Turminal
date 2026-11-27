@@ -87,3 +87,44 @@ pwd
 ```
 
 참고: https://github.com/tsl0922/ttyd
+
+## 웹 미리보기 서버 (Node.js 버전)
+
+샌드박스 웹 미리보기에서는 기존 ttyd 실행 방식과 별도로 아래 서버를 사용할 수 있습니다.
+WebSocket이 실패해도 인증된 HTTP 요청으로 같은 PTY 세션에서 입출력을 계속합니다.
+미리보기 프록시가 일반 GET/POST 요청과 사용자 정의 헤더를 전달해야 합니다.
+
+```sh
+# 필요한 경우 관리자 권한으로 설치
+apk add --no-cache bash nodejs npm python3
+# node-pty 네이티브 빌드가 필요한 경우: apk add --no-cache make g++ python3
+git pull --ff-only origin main
+npm install
+npm start
+```
+
+기본 포트는 5173입니다. 미리보기 시스템이 지정한 PORT 환경 변수를 우선 사용합니다.
+서버 로그의 **Terminal login token** 값을 미리보기 페이지에 입력하면 접속합니다.
+서버 재시작 후에도 같은 토큰을 사용하려면 배포 환경의 비밀 설정에 TERMINAL_TOKEN을
+지정합니다 (24~128자 영문/숫자/하이픈/밑줄). 토큰을 커밋하지 마세요.
+
+- Node.js 20 이상 권장. xterm.js와 FitAddon은 npm 패키지에서 로컬로 제공됩니다.
+- node-pty가 설치되지 않았거나 PTY 생성에 실패하면 python3 표준 라이브러리 PTY로 대체합니다.
+- HTTP 폴링은 250ms 간격이며 WebSocket이 복구되면 실시간 출력으로 복귀합니다.
+- 연결이 끊겨도 서버가 살아 있는 동안 동일 셸을 다시 연결합니다. 페이지 새로고침은 새 세션을 생성합니다.
+- 최대 세션 4개, 30분 미접속 세션 자동 종료, 출력 재전송 버퍼 약 1MiB.
+- 종료 버튼으로 셸을 닫으세요. 서버 재시작 시 모든 세션이 종료됩니다.
+- GitHub 원격 표시에는 저장소 주소 설정 여부만 표시하며 인증/푸시 성공을 뜻하지 않습니다.
+- 터미널은 실행 계정의 권한으로 동작합니다. 인증된 HTTPS 미리보기 또는 사설 포워딩에서만 사용하고, 외부 공개 HTTP 포트로 노출하지 마세요. 기본 바인딩은 미리보기 호환을 위해 0.0.0.0이며 로컬 전용은 TERMINAL_BIND=127.0.0.1로 설정합니다.
+- 터미널 토큰은 HTTP 헤더 및 WebSocket 서브프로토콜로 전송하므로 프록시 로그에 해당 헤더를 기록하지 않도록 설정하세요.
+
+### 진단
+
+```sh
+node --check preview-server.mjs
+python3 -m py_compile pty-bridge.py
+npm ls @xterm/xterm @xterm/addon-fit ws
+```
+
+연결되지 않으면 브라우저 Network 탭에서 /api/status, /api/session, /api/output 응답과 서버 로그를 확인하세요. 
+HTTP 401은 토큰 불일치, 503은 Bash 미설치, 404는 프록시 경로 또는 세션 만료 가능성을 나타냅니다.
