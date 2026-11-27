@@ -23,6 +23,16 @@ if [ "$bind" != "127.0.0.1" ] && [ -z "$credential" ]; then
 fi
 
 set -- -i "$bind" -p "$port" -W -O -m 1 -t fontSize=15
+if [ -n "${TERMINAL_BASE_PATH:-}" ]; then
+    set -- "$@" -b "$TERMINAL_BASE_PATH"
+fi
+if [ -n "${TERMINAL_TLS_CERT:-}${TERMINAL_TLS_KEY:-}" ]; then
+    if [ ! -r "${TERMINAL_TLS_CERT:-}" ] || [ ! -r "${TERMINAL_TLS_KEY:-}" ]; then
+        echo "Both readable TERMINAL_TLS_CERT and TERMINAL_TLS_KEY are required." >&2
+        exit 1
+    fi
+    set -- "$@" -S -C "$TERMINAL_TLS_CERT" -K "$TERMINAL_TLS_KEY"
+fi
 if [ -n "$credential" ]; then
     case "$credential" in
         ?*:?*) ;;
