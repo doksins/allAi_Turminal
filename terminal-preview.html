@@ -29,7 +29,7 @@ footer{font-size:12px;color:var(--muted)}.xterm{height:100%}
 const $ = id => document.getElementById(id)
 const base = location.pathname.replace(/\/(?:index|terminal-preview)\.html$/, '/').replace(/\/+$/, '')
 const service = suffix => base + suffix
-let term, fit, token, id, ws, cursor = 0, generation = 0, pollTimer, retryTimer, engine = '', closed = false
+let term, fit, token, id, instance, ws, cursor = 0, generation = 0, pollTimer, retryTimer, engine = '', closed = false
 let inputQueue = Promise.resolve(), resizeTimer, pollBusy = false
 function status(text, error=false) { $('status').textContent=text; $('status').className=error?'error':'' }
 function detail(text) { $('detail').textContent=text }
@@ -44,7 +44,7 @@ async function init() {
   await loadScript(service('/assets/fit.js'))
   term=new Terminal({cursorBlink:true,scrollback:10000,fontSize:14,theme:{background:'#080d0a',foreground:'#ecf7ef',cursor:'#78dba7'}})
   fit=new FitAddon.FitAddon();term.loadAddon(fit);term.open($('terminal'));fit.fit()
-  term.writeln('서버 로그에 표시된 접속 토큰을 입력하세요.')
+  term.writeln('서버 로그에 표시된 최신 접속 토큰을 입력하세요.')
   term.onData(data=>{
     if(!id||closed)return
     const g=generation
@@ -70,15 +70,29 @@ async function init() {
   status('접속 토큰 입력')
 }
 function size(){return {cols:term.cols,rows:term.rows}}
-async function api(route,{method='GET',data,query=''}={}) {
-  const headers={'X-Terminal-Token':token}
-  if(id)headers['X-Terminal-Session']=id
-  if(data!==undefined)headers['Content-Type']='application/json'
-  const response=await fetch(service('/api/'+route)+query,{method,headers,cache:'no-store',body:data===undefined?undefined:JSON.stringify(data),signal:AbortSignal.timeout(8000)})
+async function api(route,{data={}}={}) {
+  const login = route==='status'||route==='session'
+  const payload = login ? {...data,token} : {...data,session:id,instance}
+  const response=await fetch(service('/api/'+route),{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    cache:'no-store',body:JSON.stringify(payload),signal:AbortSignal.timeout(8000)
+  })
   let result
-  try{result=await response.json()}catch{throw new Error('HTTP '+response.status+' · 프록시가 API 요청을 전달하지 못했습니다.')}
-  if(!response.ok)throw Object.assign(new Error(result.error||'HTTP '+response.status),{code:response.status})
+  try{result=await response.json()}catch{throw new Error('HTTP '+response.status+' · 프록시가 JSON API 요청을 전달하지 못했습니다.')}
+  if(!response.ok){
+    const message=(result.error||'HTTP '+response.status)+(result.instance?' · 서버 '+result.instance:'')
+    throw Object.assign(new Error(message),{code:response.status,instance:result.instance})
+  }
+  if(login&&result.authVersion!==2)throw new Error('서버와 화면 버전이 다릅니다. 서버 재시작 후 새로고침하세요.')
   return result
+}
+async function checkHealth(){
+  try{
+    const response=await fetch(service('/api/health'),{cache:'no-store',signal:AbortSignal.timeout(5000)})
+    const result=await response.json()
+    if(result.authVersion!==2)throw new Error('서버 업데이트 필요')
+    detail('서버 '+result.instance+' · '+(result.tokenMode==='configured'?'고정 토큰':'시작 로그의 최신 토큰'))
+  }catch{detail('서버 진단 실패 · 최신 코드 실행 및 프록시 경로를 확인하세요.')}
 }
 function stopTransport() {
   clearTimeout(pollTimer);clearTimeout(retryTimer)
@@ -102,7 +116,7 @@ async function poll(g) {
   pollBusy=true
   let delay=250
   try{
-    const output=await api('output',{query:'?after='+cursor})
+    const output=await api('output',{data:{after:cursor}})
     if(g!==generation||closed)return
     apply(output)
     if(!closed){
@@ -112,7 +126,7 @@ async function poll(g) {
     }
   }catch(e){
     if(g!==generation||closed)return
-    if(e.code===404||e.code===401){finish(e.message);return}
+    if([401,404,409].includes(e.code)){finish(e.message);detail(e.message);return}
     status('재연결 중 · HTTP',true);detail(e.message);delay=1500
   }finally{
     pollBusy=false
@@ -123,7 +137,7 @@ function websocket(g) {
   if(g!==generation||!id||closed)return
   const scheme=location.protocol==='https:'?'wss:':'ws:'
   let socket
-  try{socket=new WebSocket(scheme+'//'+location.host+service('/terminal'),['terminal-v1','auth.'+token,'session.'+id,'after.'+cursor])}
+  try{socket=new WebSocket(scheme+'//'+location.host+service('/terminal'),['terminal-v1','session.'+id,'after.'+cursor])}
   catch{retryTimer=setTimeout(()=>websocket(g),15000);return}
   ws=socket
   const timeout=setTimeout(()=>{if(socket.readyState===WebSocket.CONNECTING)socket.close()},2500)
@@ -154,9 +168,9 @@ $('login').addEventListener('submit',async event=>{
     fit.fit()
     const result=await api('session',{method:'POST',data:size()})
     if(g!==generation)return
-    id=result.id;engine=result.engine
-    $('token').value=''
-    detail($('detail').textContent+' · '+engine)
+    id=result.id;engine=result.engine;instance=result.instance
+    token=null;$('token').value=''
+    detail($('detail').textContent+' · '+engine+' · 서버 '+instance)
     term.reset();term.focus()
     schedule(g,0);websocket(g)
   }catch(e){if(g===generation){status('연결 실패',true);detail(e.message);buttons(false)}}
@@ -167,9 +181,9 @@ $('retry').addEventListener('click',()=>{
 })
 $('end').addEventListener('click',async()=>{
   if(!id)return
-  try{await api('close',{method:'POST',data:{}})}catch(e){if(e.code!==404){status('세션 종료 실패',true);detail(e.message);return}}
-  ++generation;stopTransport();id=null;token=null;closed=false;buttons(false);status('세션 종료됨')
+  try{await api('close',{method:'POST',data:{}})}catch(e){if(![401,404,409].includes(e.code)){status('세션 종료 실패',true);detail(e.message);return}}
+  ++generation;stopTransport();id=null;token=null;instance=null;closed=false;buttons(false);status('세션 종료됨')
 })
 $('connect').disabled=true
-init().then(()=>$('connect').disabled=false).catch(e=>{status('초기화 실패',true);detail(e.message+' · npm install 확인')})
+init().then(()=>{$('connect').disabled=false;checkHealth()}).catch(e=>{status('초기화 실패',true);detail(e.message+' · npm install 확인')})
 </script></body></html>
