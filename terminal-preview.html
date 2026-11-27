@@ -3,75 +3,106 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>통화 · 가격 정보 대시보드</title>
+  <title>웹 터미널</title>
   <style>
-    :root { --bg:#f5f7fb; --surface:#ffffff; --ink:#152033; --muted:#64748b; --line:#e5eaf2; --blue:#2563eb; --green:#06875a; --red:#d14343; --navy:#0f1d37; --shadow:0 12px 36px rgba(23,39,70,.08); }
-    * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    .wrap { width:min(1180px, calc(100% - 32px)); margin:0 auto; }
-    header { background:var(--navy); color:#fff; padding:24px 0; }
-    .head { display:flex; align-items:center; justify-content:space-between; gap:20px; }
-    .brand { display:flex; align-items:center; gap:12px; }
-    .logo { width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:#3b82f6; font-size:20px; }
-    h1, h2, p { margin:0; }
-    h1 { font-size:20px; letter-spacing:-.03em; }
-    .subtitle { margin-top:3px; color:#aebbd0; font-size:13px; }
-    .updated { text-align:right; color:#c6d2e4; font-size:13px; }
-    .live { display:inline-flex; align-items:center; gap:6px; margin-top:5px; color:#8ce0ba; font-size:12px; }
-    .live::before { content:""; width:7px; height:7px; border-radius:50%; background:#5ee4a4; box-shadow:0 0 0 4px rgba(94,228,164,.12); }
-    main { padding:28px 0 48px; }
-    .notice { padding:13px 16px; margin-bottom:22px; border:1px solid #dbe7fe; border-radius:12px; background:#eff6ff; color:#285082; font-size:13px; line-height:1.5; }
-    .notice strong { color:#16447f; }
-    .top { display:flex; align-items:end; justify-content:space-between; gap:16px; margin:0 0 15px; }
-    h2 { font-size:18px; letter-spacing:-.02em; }
-    .caption { margin-top:4px; color:var(--muted); font-size:13px; }
-    .tabs { display:flex; gap:8px; }
-    button { border:0; font:inherit; cursor:pointer; }
-    .tab { padding:8px 12px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:var(--surface); font-size:13px; }
-    .tab.active { border-color:#b8cffb; color:#1d4ed8; background:#eff6ff; font-weight:700; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; }
-    .card, .panel { border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:var(--shadow); }
-    .card { padding:18px; }
-    .currency, .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-    .pair { color:var(--muted); font-size:13px; font-weight:700; }
-    .name { margin-top:5px; font-size:15px; font-weight:750; }
-    .value { margin:20px 0 5px; font-size:22px; font-weight:800; letter-spacing:-.04em; }
-    .unit { margin-left:4px; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:0; }
-    .pending, .pill { display:inline-flex; padding:5px 8px; border-radius:999px; color:#526075; background:#f1f5f9; font-size:12px; font-weight:750; }
-    .spark { width:65px; height:36px; opacity:.9; }
-    .lower { display:grid; grid-template-columns:1.45fr 1fr; gap:18px; margin-top:24px; }
-    .panel { padding:21px; }
-    .pill { border-radius:7px; }
-    .chart-placeholder { display:grid; place-items:center; height:190px; margin-top:16px; border:1px dashed #cbd5e1; border-radius:10px; color:var(--muted); font-size:13px; }
-    .price-list { margin:14px 0 0; padding:0; list-style:none; }
-    .row { display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding:13px 0; border-top:1px solid var(--line); }
-    .asset { font-size:14px; font-weight:750; }
-    .asset small { display:block; margin-top:3px; color:var(--muted); font-size:12px; font-weight:500; }
-    .foot { margin:22px 2px 0; color:var(--muted); font-size:12px; line-height:1.55; }
-    @media (max-width:720px) { .wrap{width:min(100% - 24px,1180px)} .head,.top{align-items:flex-start;flex-direction:column}.updated{text-align:left}.lower{grid-template-columns:1fr}.tabs{width:100%}.tab{flex:1}.card{padding:16px}.value{font-size:20px} }
+    :root {
+      --color-primary: #78dba7;
+      --color-bg: #0d1310;
+      --color-surface: #151f19;
+      --color-text: #ecf7ef;
+      --color-muted: #a2b1a8;
+      --color-accent: #253b2d;
+      --color-danger: #f5a4a4;
+      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+      --text-sm: 13px; --text-base: 15px; --text-lg: 18px; --text-xl: 24px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; color: var(--color-text); background: var(--color-bg); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .shell { width: min(1120px, calc(100% - 24px)); min-height: 100vh; margin: 0 auto; padding: var(--space-5) 0; display: grid; grid-template-rows: auto 1fr auto; gap: var(--space-4); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+    .brand { display: flex; align-items: center; gap: var(--space-3); font-family: system-ui, sans-serif; }
+    .mark { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #3d7354; border-radius: 12px; background: #183323; color: var(--color-primary); font-weight: 800; }
+    h1, p { margin: 0; }
+    h1 { font-size: var(--text-lg); letter-spacing: -0.03em; }
+    .sub { margin-top: var(--space-1); color: var(--color-muted); font-size: var(--text-sm); }
+    .status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: var(--color-accent); color: var(--color-muted); font: 700 var(--text-sm)/1 system-ui, sans-serif; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #78867d; }
+    .status.ready { color: #baf1cf; background: #163223; }
+    .status.ready .dot { background: var(--color-primary); box-shadow: 0 0 0 4px rgba(120,219,167,.12); }
+    .status.error { color: #ffd0d0; background: #3c2020; }
+    .status.error .dot { background: var(--color-danger); }
+    main { min-height: 520px; border: 1px solid #2b4233; border-radius: 16px; overflow: hidden; background: #080d0a; box-shadow: 0 18px 54px rgba(0,0,0,.27); }
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 46px; padding: 0 var(--space-4); border-bottom: 1px solid #25362b; background: var(--color-surface); font: 700 var(--text-sm)/1 system-ui, sans-serif; }
+    .lights { display: flex; gap: 6px; }
+    .lights span { width: 10px; height: 10px; border-radius: 50%; background: #3b5242; }
+    .bar-label { color: var(--color-muted); }
+    #terminal { height: calc(100% - 46px); min-height: 474px; padding: var(--space-4); outline: none; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; caret-color: transparent; font-size: var(--text-base); line-height: 1.55; }
+    #terminal:focus { box-shadow: inset 0 0 0 2px rgba(120,219,167,.48); }
+    .welcome { color: #bfd1c4; }
+    .muted { color: var(--color-muted); }
+    .cursor { display: inline-block; width: 9px; height: 18px; margin-left: 2px; vertical-align: -3px; background: var(--color-primary); animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    footer { color: var(--color-muted); font: var(--text-sm)/1.5 system-ui, sans-serif; }
+    kbd { padding: 2px 6px; border: 1px solid #415447; border-bottom-width: 2px; border-radius: 5px; color: #cfe2d4; background: #18231c; font: 700 11px ui-monospace, monospace; }
+    @media (max-width: 640px) { .shell { width: min(100% - 16px, 1120px); padding: var(--space-3) 0; } header { align-items: flex-start; } .status { font-size: 11px; } main { min-height: 420px; } #terminal { min-height: 374px; padding: var(--space-3); font-size: 14px; } }
   </style>
 </head>
 <body>
-  <header>
-    <div class="wrap head">
-      <div class="brand"><div class="logo">₩</div><div><h1>통화 · 가격 정보 대시보드</h1><p class="subtitle">주요 통화와 자산 정보를 한눈에 확인하세요</p></div></div>
-      <div class="updated">데이터 기준 시각: 미연결<br><span class="live">대시보드 표시 중</span></div>
-    </div>
-  </header>
-  <main class="wrap">
-    <div class="notice"><strong>변경 안내</strong> 미리보기 화면이 터미널 연결 대기 상태로만 표시되어, 요청에 따라 통화 · 가격 정보 대시보드 화면으로 변경했습니다. 외부 시세 연동이 아직 연결되지 않아 현재 가격과 등락률은 표시하지 않습니다.</div>
-    <div class="top"><div><h2>주요 환율</h2><p class="caption">원화 환산 기준 가격</p></div><div class="tabs"><button class="tab active" type="button">환율</button><button class="tab" type="button">자산 시세</button></div></div>
-    <section class="grid" aria-label="주요 환율 목록">
-      <article class="card"><div class="currency"><div><div class="pair">USD / KRW</div><div class="name">미국 달러</div></div><svg class="spark" viewBox="0 0 65 36" aria-hidden="true"><path d="M1 27 C9 27 10 13 19 20 S31 21 37 12 S51 18 64 5" fill="none" stroke="#94a3b8" stroke-width="2.5"/></svg></div><div class="value">데이터 미연결</div><span class="pending">시세 준비 중</span></article>
-      <article class="card"><div class="currency"><div><div class="pair">JPY / KRW</div><div class="name">일본 엔</div></div><svg class="spark" viewBox="0 0 65 36" aria-hidden="true"><path d="M1 8 C12 4 12 22 23 18 S34 30 43 20 S52 23 64 29" fill="none" stroke="#94a3b8" stroke-width="2.5"/></svg></div><div class="value">데이터 미연결</div><span class="pending">시세 준비 중</span></article>
-      <article class="card"><div class="currency"><div><div class="pair">EUR / KRW</div><div class="name">유로</div></div><svg class="spark" viewBox="0 0 65 36" aria-hidden="true"><path d="M1 23 C10 10 17 27 27 17 S39 22 47 12 S56 11 64 6" fill="none" stroke="#94a3b8" stroke-width="2.5"/></svg></div><div class="value">데이터 미연결</div><span class="pending">시세 준비 중</span></article>
-      <article class="card"><div class="currency"><div><div class="pair">CNY / KRW</div><div class="name">중국 위안</div></div><svg class="spark" viewBox="0 0 65 36" aria-hidden="true"><path d="M1 20 C11 13 19 25 30 19 S43 19 50 14 S58 16 64 14" fill="none" stroke="#94a3b8" stroke-width="2.5"/></svg></div><div class="value">데이터 미연결</div><span class="pending">시세 준비 중</span></article>
-    </section>
-    <section class="lower">
-      <article class="panel"><div class="panel-head"><div><h2>달러 / 원 흐름</h2><p class="caption">시세 데이터를 연결하면 추이가 표시됩니다</p></div><span class="pill">USD/KRW</span></div><div class="chart-placeholder">표시할 시세 데이터가 없습니다.</div></article>
-      <article class="panel"><div class="panel-head"><div><h2>주요 자산</h2><p class="caption">대표 시장 가격</p></div><span class="pill">KRW 기준</span></div><ul class="price-list"><li class="row"><div class="asset">국제 금<small>Gold · 1g</small></div><span class="pending">미연결</span></li><li class="row"><div class="asset">비트코인<small>BTC</small></div><span class="pending">미연결</span></li><li class="row"><div class="asset">WTI 원유<small>1 배럴</small></div><span class="pending">미연결</span></li></ul></article>
-    </section>
-    <p class="foot">표시 가격은 외부 시세 연동 후에 제공됩니다.</p>
-  </main>
+  <div class="shell">
+    <header>
+      <div class="brand"><div class="mark" aria-hidden="true">›_</div><div><h1>웹 터미널</h1><p class="sub">현재 작업 환경에 연결합니다</p></div></div>
+      <div id="status" class="status" role="status"><span class="dot"></span><span>연결 중</span></div>
+    </header>
+    <main>
+      <div class="bar"><div class="lights" aria-hidden="true"><span></span><span></span><span></span></div><span class="bar-label">bash</span></div>
+      <div id="terminal" tabindex="0" role="textbox" aria-label="명령 입력 터미널"><span class="welcome">터미널을 준비하고 있습니다…</span><span class="cursor" aria-hidden="true"></span></div>
+    </main>
+    <footer>명령을 입력하려면 화면을 선택하세요. <kbd>Enter</kbd>로 실행할 수 있습니다.</footer>
+  </div>
+  <script>
+    const terminal = document.getElementById('terminal')
+    const status = document.getElementById('status')
+    let socket
+
+    const setStatus = (text, state = '') => {
+      status.className = `status ${state}`
+      status.lastElementChild.textContent = text
+    }
+    const append = (text) => {
+      if (!text) return
+      const cursor = terminal.querySelector('.cursor')
+      const node = document.createTextNode(text)
+      terminal.insertBefore(node, cursor)
+      terminal.scrollTop = terminal.scrollHeight
+    }
+    const connect = () => {
+      const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
+      socket = new WebSocket(`${scheme}://${location.host}/terminal`)
+      socket.addEventListener('open', () => {
+        terminal.replaceChildren(document.createElement('span'))
+        terminal.lastElementChild.className = 'cursor'
+        setStatus('연결됨', 'ready')
+        terminal.focus()
+        socket.send(JSON.stringify({ type: 'resize', cols: 100, rows: 30 }))
+      })
+      socket.addEventListener('message', (event) => append(event.data))
+      socket.addEventListener('close', () => setStatus('연결이 종료됨', 'error'))
+      socket.addEventListener('error', () => setStatus('연결할 수 없음', 'error'))
+    }
+    terminal.addEventListener('keydown', (event) => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return
+      const special = { Enter: '\\r', Backspace: '\\x7f', Tab: '\\t', ArrowUp: '\\x1b[A', ArrowDown: '\\x1b[B', ArrowRight: '\\x1b[C', ArrowLeft: '\\x1b[D', Escape: '\\x1b' }
+      if (event.key in special) { event.preventDefault(); socket.send(JSON.stringify({ type: 'input', data: special[event.key] })); return }
+      if (event.ctrlKey && event.key.length === 1) { event.preventDefault(); socket.send(JSON.stringify({ type: 'input', data: String.fromCharCode(event.key.toUpperCase().charCodeAt(0) - 64) })); return }
+      if (!event.metaKey && !event.altKey && event.key.length === 1) { event.preventDefault(); socket.send(JSON.stringify({ type: 'input', data: event.key })) }
+    })
+    terminal.addEventListener('paste', (event) => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return
+      event.preventDefault()
+      socket.send(JSON.stringify({ type: 'input', data: event.clipboardData.getData('text') }))
+    })
+    window.addEventListener('resize', () => socket?.readyState === WebSocket.OPEN && socket.send(JSON.stringify({ type: 'resize', cols: 100, rows: 30 })))
+    connect()
+  </script>
 </body>
 </html>
