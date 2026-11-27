@@ -9,12 +9,14 @@ const root = process.cwd()
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`)
   const pathname = url.pathname
-  const isAppRoute = pathname === '/' || pathname === '/index.html' || pathname === '/terminal-preview.html' || pathname.endsWith('/index.html')
-  if (!isAppRoute) {
-    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
-    response.end('Not found')
+  const isAssetRequest = /\.(?:js|css|map|ico|png|svg)$/i.test(pathname)
+
+  if (isAssetRequest) {
+    response.writeHead(204, { 'Cache-Control': 'no-store' })
+    response.end()
     return
   }
+
   try {
     const page = await readFile(path.join(root, 'terminal-preview.html'))
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
