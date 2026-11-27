@@ -1,122 +1,175 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>웹 터미널</title>
-  <style>
-    :root {
-      --color-primary: #78dba7;
-      --color-bg: #0d1310;
-      --color-surface: #151f19;
-      --color-text: #ecf7ef;
-      --color-muted: #a2b1a8;
-      --color-accent: #253b2d;
-      --color-danger: #f5a4a4;
-      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
-      --text-sm: 13px; --text-base: 15px; --text-lg: 18px; --text-xl: 24px;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; min-height: 100vh; color: var(--color-text); background: var(--color-bg); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    .shell { width: min(1120px, calc(100% - 24px)); min-height: 100vh; margin: 0 auto; padding: var(--space-5) 0; display: grid; grid-template-rows: auto 1fr auto; gap: var(--space-4); }
-    header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
-    .brand { display: flex; align-items: center; gap: var(--space-3); font-family: system-ui, sans-serif; }
-    .mark { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #3d7354; border-radius: 12px; background: #183323; color: var(--color-primary); font-weight: 800; }
-    h1, p { margin: 0; }
-    h1 { font-size: var(--text-lg); letter-spacing: -0.03em; }
-    .sub { margin-top: var(--space-1); color: var(--color-muted); font-size: var(--text-sm); }
-    .status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: var(--color-accent); color: var(--color-muted); font: 700 var(--text-sm)/1 system-ui, sans-serif; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #78867d; }
-    .status.ready { color: #baf1cf; background: #163223; }
-    .status.ready .dot { background: var(--color-primary); box-shadow: 0 0 0 4px rgba(120,219,167,.12); }
-    .status.error { color: #ffd0d0; background: #3c2020; }
-    .status.error .dot { background: var(--color-danger); }
-    main { min-height: 520px; border: 1px solid #2b4233; border-radius: 16px; overflow: hidden; background: #080d0a; box-shadow: 0 18px 54px rgba(0,0,0,.27); }
-    .bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 46px; padding: 0 var(--space-4); border-bottom: 1px solid #25362b; background: var(--color-surface); font: 700 var(--text-sm)/1 system-ui, sans-serif; }
-    .lights { display: flex; gap: 6px; }
-    .lights span { width: 10px; height: 10px; border-radius: 50%; background: #3b5242; }
-    .bar-label { color: var(--color-muted); }
-    #terminal { height: calc(100% - 46px); min-height: 474px; padding: var(--space-4); outline: none; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; caret-color: transparent; font-size: var(--text-base); line-height: 1.55; }
-    #terminal:focus { box-shadow: inset 0 0 0 2px rgba(120,219,167,.48); }
-    .welcome { color: #bfd1c4; }
-    .muted { color: var(--color-muted); }
-    .cursor { display: inline-block; width: 9px; height: 18px; margin-left: 2px; vertical-align: -3px; background: var(--color-primary); animation: blink 1s step-end infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
-    footer { color: var(--color-muted); font: var(--text-sm)/1.5 system-ui, sans-serif; }
-    kbd { padding: 2px 6px; border: 1px solid #415447; border-bottom-width: 2px; border-radius: 5px; color: #cfe2d4; background: #18231c; font: 700 11px ui-monospace, monospace; }
-    @media (max-width: 640px) { .shell { width: min(100% - 16px, 1120px); padding: var(--space-3) 0; } header { align-items: flex-start; } .status { font-size: 11px; } main { min-height: 420px; } #terminal { min-height: 374px; padding: var(--space-3); font-size: 14px; } }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALLAI 웹 터미널</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1310;--panel:#141e18;--line:#2b4233;--accent:#78dba7;--text:#ecf7ef;--muted:#a2b1a8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,sans-serif}
+.shell{height:100dvh;min-height:300px;max-width:1400px;margin:auto;padding:14px;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:12px}
+header{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:19px;margin:0 0 3px}p{margin:0;color:var(--muted);overflow-wrap:anywhere}
+#status{color:var(--accent);font-weight:600}.error{color:#ffa5a5!important}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,button{font:inherit;border:1px solid var(--line);border-radius:7px;padding:9px 12px;background:var(--panel);color:var(--text)}
+input{min-width:0;flex:1;max-width:360px}button{cursor:pointer}button:disabled{opacity:.45;cursor:default}
+#connect{background:#244734;color:#d7ffe5}#terminal{padding:10px;min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:9px;background:#080d0a}
+footer{font-size:12px;color:var(--muted)}.xterm{height:100%}
+</style>
 </head>
-<body>
-  <div class="shell">
-    <header>
-      <div class="brand"><div class="mark" aria-hidden="true">›_</div><div><h1>웹 터미널</h1><p class="sub">현재 작업 환경에 연결합니다</p><p id="github-status" class="sub" role="status">GitHub 연결 상태를 확인하고 있습니다…</p></div></div>
-      <div id="status" class="status" role="status"><span class="dot"></span><span>연결 중</span></div>
-    </header>
-    <main>
-      <div class="bar"><div class="lights" aria-hidden="true"><span></span><span></span><span></span></div><span class="bar-label">bash</span></div>
-      <div id="terminal" tabindex="0" role="textbox" aria-label="명령 입력 터미널"><span class="welcome">터미널을 준비하고 있습니다…</span><span class="cursor" aria-hidden="true"></span></div>
-    </main>
-    <footer>명령을 입력하려면 화면을 선택하세요. <kbd>Enter</kbd>로 실행할 수 있습니다.</footer>
-  </div>
-  <script>
-    const terminal = document.getElementById('terminal')
-    const status = document.getElementById('status')
-    const githubStatus = document.getElementById('github-status')
-    let socket
-    const basePath = location.pathname.endsWith('/') ? location.pathname.slice(0, -1) : location.pathname
-    const servicePath = (suffix) => `${basePath}${suffix}`.replace(/\/\/{2,}/g, '/')
-    const setStatus = (text, state = '') => {
-      status.className = `status ${state}`
-      status.lastElementChild.textContent = text
-    }
-    const showGitHubStatus = async () => {
-      try {
-        const response = await fetch(servicePath('/api/status'), { cache: 'no-store' })
-        if (!response.ok) throw new Error('상태 정보를 가져오지 못했습니다.')
-        const { github, bashAvailable } = await response.json()
-        const repository = github.configured ? `GitHub: ${github.repository} · 연결됨` : 'GitHub: 원격 저장소 미연결'
-        githubStatus.textContent = bashAvailable ? repository : `${repository} · Bash를 찾을 수 없음`
-      } catch {
-        githubStatus.textContent = 'GitHub 연결 상태를 확인하지 못했습니다.'
-      }
-    }
-    const append = (text) => {
-      if (!text) return
-      const cursor = terminal.querySelector('.cursor')
-      const node = document.createTextNode(text)
-      terminal.insertBefore(node, cursor)
-      terminal.scrollTop = terminal.scrollHeight
-    }
-    const connect = () => {
-      const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
-      socket = new WebSocket(`${scheme}://${location.host}${servicePath('/terminal')}`)
-      socket.addEventListener('open', () => {
-        terminal.replaceChildren(document.createElement('span'))
-        terminal.lastElementChild.className = 'cursor'
-        setStatus('연결됨', 'ready')
-        terminal.focus()
-        socket.send(JSON.stringify({ type: 'resize', cols: 100, rows: 30 }))
+<body><div class="shell">
+<header><div><h1>›_ ALLAI 웹 터미널</h1><p id="detail">현재 작업 환경에 연결합니다</p></div><span id="status" role="status">준비 중</span></header>
+<form class="controls" id="login"><input type="password" id="token" placeholder="서버 로그의 터미널 토큰" aria-label="터미널 접속 토큰" autocomplete="off" required><button id="connect">연결</button><button id="retry" type="button" disabled>재연결</button><button id="end" type="button" disabled>세션 종료</button></form>
+<main id="terminal" aria-label="Bash 터미널"></main>
+<footer>WebSocket + HTTP 자동 전환 · 실제 Bash · 종료 전까지 같은 셸 유지 · 30분 미접속 시 세션 정리</footer>
+</div>
+<script>
+'use strict'
+const $ = id => document.getElementById(id)
+const base = location.pathname.replace(/\/(?:index|terminal-preview)\.html$/, '/').replace(/\/+$/, '')
+const service = suffix => base + suffix
+let term, fit, token, id, ws, cursor = 0, generation = 0, pollTimer, retryTimer, engine = '', closed = false
+let inputQueue = Promise.resolve(), resizeTimer, pollBusy = false
+function status(text, error=false) { $('status').textContent=text; $('status').className=error?'error':'' }
+function detail(text) { $('detail').textContent=text }
+function loadScript(url) {
+  return new Promise((resolve,reject) => {
+    const script=document.createElement('script');script.src=url;script.onload=resolve;script.onerror=()=>reject(new Error('터미널 라이브러리 로딩 실패: '+url));document.head.append(script)
+  })
+}
+async function init() {
+  const css=document.createElement('link');css.rel='stylesheet';css.href=service('/assets/xterm.css');document.head.append(css)
+  await loadScript(service('/assets/xterm.js'))
+  await loadScript(service('/assets/fit.js'))
+  term=new Terminal({cursorBlink:true,scrollback:10000,fontSize:14,theme:{background:'#080d0a',foreground:'#ecf7ef',cursor:'#78dba7'}})
+  fit=new FitAddon.FitAddon();term.loadAddon(fit);term.open($('terminal'));fit.fit()
+  term.writeln('서버 로그에 표시된 접속 토큰을 입력하세요.')
+  term.onData(data=>{
+    if(!id||closed)return
+    const g=generation
+    for(let i=0;i<data.length;) {
+      let n=Math.min(i+16000,data.length)
+      if(n<data.length&&/[\uD800-\uDBFF]/.test(data[n-1]))n--
+      const chunk=data.slice(i,n);i=n
+      inputQueue=inputQueue.then(async()=>{
+        if(g!==generation||!id||closed)return
+        try{await api('input',{method:'POST',data:{data:chunk}})}
+        catch(e){if(g===generation){status('입력 전송 실패',true);detail(e.message)}}
       })
-      socket.addEventListener('message', (event) => append(event.data))
-      socket.addEventListener('close', () => setStatus('연결이 종료됨', 'error'))
-      socket.addEventListener('error', () => setStatus('연결할 수 없음', 'error'))
     }
-    showGitHubStatus()
-    terminal.addEventListener('keydown', (event) => {
-      if (!socket || socket.readyState !== WebSocket.OPEN) return
-      const special = { Enter: '\\r', Backspace: '\\x7f', Tab: '\\t', ArrowUp: '\\x1b[A', ArrowDown: '\\x1b[B', ArrowRight: '\\x1b[C', ArrowLeft: '\\x1b[D', Escape: '\\x1b' }
-      if (event.key in special) { event.preventDefault(); socket.send(JSON.stringify({ type: 'input', data: special[event.key] })); return }
-      if (event.ctrlKey && event.key.length === 1) { event.preventDefault(); socket.send(JSON.stringify({ type: 'input', data: String.fromCharCode(event.key.toUpperCase().charCodeAt(0) - 64) })); return }
-      if (!event.metaKey && !event.altKey && event.key.length === 1) { event.preventDefault(); socket.send(JSON.stringify({ type: 'input', data: event.key })) }
-    })
-    terminal.addEventListener('paste', (event) => {
-      if (!socket || socket.readyState !== WebSocket.OPEN) return
-      event.preventDefault()
-      socket.send(JSON.stringify({ type: 'input', data: event.clipboardData.getData('text') }))
-    })
-    window.addEventListener('resize', () => socket?.readyState === WebSocket.OPEN && socket.send(JSON.stringify({ type: 'resize', cols: 100, rows: 30 })))
-    connect()
-  </script>
-</body>
-</html>
+  })
+  term.onResize(()=>{
+    clearTimeout(resizeTimer)
+    const g=generation
+    resizeTimer=setTimeout(()=>{
+      if(g===generation&&id&&!closed)api('resize',{method:'POST',data:size()}).catch(()=>{})
+    },150)
+  })
+  new ResizeObserver(()=>{try{fit.fit()}catch{}}).observe($('terminal'))
+  status('접속 토큰 입력')
+}
+function size(){return {cols:term.cols,rows:term.rows}}
+async function api(route,{method='GET',data,query=''}={}) {
+  const headers={'X-Terminal-Token':token}
+  if(id)headers['X-Terminal-Session']=id
+  if(data!==undefined)headers['Content-Type']='application/json'
+  const response=await fetch(service('/api/'+route)+query,{method,headers,cache:'no-store',body:data===undefined?undefined:JSON.stringify(data),signal:AbortSignal.timeout(8000)})
+  let result
+  try{result=await response.json()}catch{throw new Error('HTTP '+response.status+' · 프록시가 API 요청을 전달하지 못했습니다.')}
+  if(!response.ok)throw Object.assign(new Error(result.error||'HTTP '+response.status),{code:response.status})
+  return result
+}
+function stopTransport() {
+  clearTimeout(pollTimer);clearTimeout(retryTimer)
+  const old=ws;ws=null;if(old)old.close()
+}
+function buttons(active){$('connect').disabled=active;$('retry').disabled=!active;$('end').disabled=!active;$('token').disabled=active}
+function finish(message) {
+  closed=true;stopTransport();status(message,true);$('retry').disabled=true
+}
+function apply(data) {
+  if(!id||closed)return
+  const events=data.events||[]
+  if(data.truncated&&events[0]?.seq>cursor+1)term.writeln('\r\n[이전 출력 일부가 생략되었습니다]\r\n')
+  for(const event of events)if(event.seq>cursor){term.write(event.data);cursor=event.seq}
+  if(data.closed)finish('Bash 종료 ('+(data.exitCode??'?')+')')
+}
+function schedule(g,delay){clearTimeout(pollTimer);pollTimer=setTimeout(()=>poll(g),delay)}
+async function poll(g) {
+  if(g!==generation||!id||closed)return
+  if(pollBusy){schedule(g,200);return}
+  pollBusy=true
+  let delay=250
+  try{
+    const output=await api('output',{query:'?after='+cursor})
+    if(g!==generation||closed)return
+    apply(output)
+    if(!closed){
+      const live=ws?.readyState===WebSocket.OPEN
+      status(live?'연결됨 · WebSocket':'연결됨 · HTTP')
+      delay=live?5000:250
+    }
+  }catch(e){
+    if(g!==generation||closed)return
+    if(e.code===404||e.code===401){finish(e.message);return}
+    status('재연결 중 · HTTP',true);detail(e.message);delay=1500
+  }finally{
+    pollBusy=false
+    if(g===generation&&id&&!closed)schedule(g,delay)
+  }
+}
+function websocket(g) {
+  if(g!==generation||!id||closed)return
+  const scheme=location.protocol==='https:'?'wss:':'ws:'
+  let socket
+  try{socket=new WebSocket(scheme+'//'+location.host+service('/terminal'),['terminal-v1','auth.'+token,'session.'+id,'after.'+cursor])}
+  catch{retryTimer=setTimeout(()=>websocket(g),15000);return}
+  ws=socket
+  const timeout=setTimeout(()=>{if(socket.readyState===WebSocket.CONNECTING)socket.close()},2500)
+  socket.onopen=()=>{clearTimeout(timeout);if(ws===socket&&g===generation&&!closed)status('연결됨 · WebSocket')}
+  socket.onmessage=e=>{
+    if(ws!==socket||g!==generation||closed)return
+    try{apply(JSON.parse(e.data))}catch{socket.close()}
+  }
+  socket.onerror=()=>{clearTimeout(timeout)}
+  socket.onclose=()=>{
+    clearTimeout(timeout)
+    if(ws!==socket||g!==generation||closed)return
+    ws=null;status('HTTP 연결로 전환');schedule(g,0)
+    retryTimer=setTimeout(()=>websocket(g),15000)
+  }
+}
+$('login').addEventListener('submit',async event=>{
+  event.preventDefault()
+  if(!term||id)return
+  token=$('token').value.trim()
+  const g=++generation
+  buttons(true);status('Bash 확인 중');closed=false;cursor=0
+  try{
+    const s=await api('status')
+    if(g!==generation)return
+    if(!s.bashAvailable)throw new Error('/bin/bash 없음 · apk add bash')
+    detail(s.github?.repository?'GitHub 원격: '+s.github.repository:'GitHub 원격 미설정')
+    fit.fit()
+    const result=await api('session',{method:'POST',data:size()})
+    if(g!==generation)return
+    id=result.id;engine=result.engine
+    $('token').value=''
+    detail($('detail').textContent+' · '+engine)
+    term.reset();term.focus()
+    schedule(g,0);websocket(g)
+  }catch(e){if(g===generation){status('연결 실패',true);detail(e.message);buttons(false)}}
+})
+$('retry').addEventListener('click',()=>{
+  if(!id||closed)return
+  const g=++generation;stopTransport();status('재연결 중');schedule(g,0);websocket(g);term.focus()
+})
+$('end').addEventListener('click',async()=>{
+  if(!id)return
+  try{await api('close',{method:'POST',data:{}})}catch(e){if(e.code!==404){status('세션 종료 실패',true);detail(e.message);return}}
+  ++generation;stopTransport();id=null;token=null;closed=false;buttons(false);status('세션 종료됨')
+})
+$('connect').disabled=true
+init().then(()=>$('connect').disabled=false).catch(e=>{status('초기화 실패',true);detail(e.message+' · npm install 확인')})
+</script></body></html>
